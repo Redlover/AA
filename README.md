@@ -1,2 +1,5 @@
-# Work Project
-Record my learning about PLC
+#  Project Introduction
+> Only record my work learning about source file
+- PLC
+- ABB Robot
+- Motion Control Card
