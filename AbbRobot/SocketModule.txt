@@ -1,0 +1,26 @@
+MODULE MainModule
+    PERS string sSend:="";
+    PERS string sReceive:="";
+    PERS bool bSent:=FALSE;
+    PERS bool bReceive:=FALSE;
+
+    PROC prTest()
+        VAR string sTest;
+        sTest:=fuReceiveData();
+        prSentData sTest;
+        sTest:="";
+    ENDPROC
+
+    PROC prSentData(string strSend)
+        sSend:=strSend;
+        bSent:=TRUE;
+        WaitUntil bSent=FALSE;
+    ENDPROC
+
+    FUNC string fuReceiveData()
+        bReceive:=TRUE;
+        WaitUntil bReceive=FALSE;
+        RETURN sReceive;
+    ENDFUNC
+
+ENDMODULE

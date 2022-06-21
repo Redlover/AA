@@ -1,0 +1,60 @@
+MODULE MainModule
+    VAR socketdev ServerSocket;
+    VAR socketdev ClientSocket;
+    VAR string sClientIP:="";
+    VAR string strSend:="";
+    VAR string strReceive:="";
+    PERS string sSend:="";
+    PERS string sReceive:="";
+    PERS bool bSent:=FALSE;
+    PERS bool bReceive:=FALSE;
+
+    PROC main()
+        prCreateServe;
+        WHILE TRUE DO
+            prServerMessaging;
+            WaitTime 0.1;
+        ENDWHILE
+    ENDPROC
+
+    PROC prCreateServe()
+        TPErase;
+        SocketClose ServerSocket;
+        SocketClose ClientSocket;
+        SocketCreate ServerSocket;
+        SocketBind ServerSocket,"192.168.0.111",6400;
+        SocketListen ServerSocket;
+        SocketAccept ServerSocket,ClientSocket\ClientAddress:=sClientIP\Time:=WAIT_MAX;
+        TPWrite "the socket client is successfully connected. the client ip is "+sClientIP;
+    ENDPROC
+
+    PROC prServerMessaging()
+        SocketReceive ClientSocket\Str:=strReceive\Time:=WAIT_MAX;
+        IF strReceive<>"" THEN
+            TPWrite "the received string is "+strReceive;
+            WaitUntil bReceive=TRUE;
+            sReceive:=strReceive;
+            bReceive:=FALSE;
+            WaitUntil bSent=TRUE;
+            strSend:=sSend;
+            SocketSend ClientSocket\Str:=strSend;
+            TPWrite "the sent string is "+sSend;
+            bSent:=FALSE;
+            strReceive:="";
+            strSend:="";
+            sReceive:="";
+            sSend:="";
+        ENDIF
+
+    ERROR
+        IF ERRNO=ERR_SOCK_TIMEOUT THEN
+            WaitTime 0.2;
+            RETRY;
+        ELSEIF ERRNO=ERR_SOCK_CLOSED THEN
+            prCreateServe;
+            RETRY;
+        ELSE
+            ! No error recovery handling
+        ENDIF
+    ENDPROC
+ENDMODULE

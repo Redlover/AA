@@ -1,0 +1,526 @@
+MODULE MainModule
+    CONST robtarget pLeftTake:=[[140.95,-337.39,534.23],[0.00204386,0.023615,-0.701854,0.711927],[-1,0,2,1],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]]; 
+    CONST robtarget pLeftPut:=[[144.18,-336.47,536.35],[0.71452,0.698696,0.0320465,-0.0160622],[-1,0,0,1],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget pRightTake:=[[416.02,-355.14,537.34],[0.0159805,0.00133524,-0.714436,0.699517],[-1,0,2,1],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget pRightPut:=[[417.14,-351.75,532.85],[0.711473,0.702421,0.00940073,-0.017945],[-1,0,0,1],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget pLineTake:=[[194.84,495.36,364.64],[0.498905,0.499047,0.498834,0.5032],[0,0,0,1],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]]; 
+    CONST robtarget pLinePut:=[[194.79,495.91,363.91],[0.504636,-0.495755,0.502591,-0.496962],[0,0,2,1],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];     
+    CONST robtarget pHome:=[[438.15,81.43,612.43],[0.484602,-0.522472,0.484254,-0.507624],[0,0,2,1],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];      
+    CONST robtarget pTempHome:=[[438.14,81.42,612.40],[0.497331,0.495132,0.512214,0.495119],[0,0,0,1],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];     
+    PERS bool bLineSign:=TRUE;   
+    PERS bool bLeftSign:=FALSE; 
+    PERS bool bRightSign:=TRUE;  
+    VAR intnum RawInterrupt;       
+    VAR intnum DoneInterrupt;   
+    VAR bool bLeftClear;   
+    VAR bool bRightClear; 
+    VAR wzstationary service;
+
+    PROC main()
+        AccSet 100,100;
+        prCall "Initial";                   
+        WHILE TRUE DO
+            !prHead;      
+            prSecond; 
+        ENDWHILE
+    ENDPROC
+    
+    PROC prHead()
+        IF ABB_RawNoneSensor=0 THEN
+            prCall "TempHome";
+            IF ABB_DoneNoneSensor=0 THEN
+                IF ABB_ILinePermit=1 THEN
+                    prCall "TempHome";
+                    prExecute "TakeLine";
+                    prCall "RawInterrupt";
+                    WaitUntil ABB_ILinePermit=1;
+                    Set ABB_OLineOK;
+                    Set ABB_OLineNG;
+                    WaitTime 1;
+                    Reset ABB_OLineOK;
+                    Reset ABB_OLineNG;
+                ELSEIF ABB_ILineClear=1 THEN
+                    IF bLeftClear=FALSE THEN
+                        IF ABB_ILeftOK=1 THEN
+                            prCall "Home";
+                            prExecute "TakeLeft";
+                            prCall "DoneInterrupt";
+                            prCall "Up";
+                            WaitUntil ABB_ILineClear=1;
+                            prExecute "PutLine";
+                            Set ABB_OLineOK;
+                            WaitTime 1;
+                            Reset ABB_OLineOK;
+                            bLeftClear:=TRUE;
+                        ELSEIF ABB_ILeftNG=1 THEN
+                            Set ABB_OLineOK;
+                            Set ABB_OLineNG;
+                            WaitTime 1;
+                            Reset ABB_OLineOK;
+                            Reset ABB_OLineNG;
+                            bLeftClear:=TRUE;
+                        ENDIF
+                    ENDIF
+                    IF bRightClear=FALSE THEN
+                        IF ABB_IRightOK=1 THEN
+                            prCall "Home";
+                            prExecute "TakeRight";
+                            prCall "DoneInterrupt";
+                            prCall "Up";
+                            WaitUntil ABB_ILineClear=1;
+                            prExecute "PutLine";
+                            Set ABB_OLineOK;
+                            WaitTime 1;
+                            Reset ABB_OLineOK;
+                            bRightClear:=TRUE;
+                        ELSEIF ABB_IRightNG=1 THEN
+                            Set ABB_OLineOK;
+                            Set ABB_OLineNG;
+                            WaitTime 1;
+                            Reset ABB_OLineOK;
+                            Reset ABB_OLineNG;
+                            bRightClear:=TRUE;
+                        ENDIF
+                    ENDIF
+                ENDIF
+            ELSE
+                IF ABB_ILinePermit=1 THEN
+                    prCall "TempHome";
+                    prExecute "TakeLine";
+                    bLineSign:=TRUE;
+                    prCall "RawInterrupt";
+                    prCall "Up";
+                    prExecute "PutLine";
+                    WaitUntil ABB_ILinePermit=1;
+                    PulseDO\PLength:=1,ABB_OLineOK;
+                    bLineSign:=FALSE;
+                ENDIF
+                IF ABB_ILineClear=1 THEN
+                    WaitUntil ABB_ILineClear=1;
+                    prExecute "PutLine";
+                    Set ABB_OLineOK;
+                    WaitTime 1;
+                    Reset ABB_OLineOK;
+                ENDIF
+            ENDIF
+        ELSE
+            prCall "Home";
+            IF ABB_DoneNoneSensor=0 THEN
+                IF ABB_ILeftOK=1 THEN
+                    prExecute "TakeLeft";
+                    bLeftSign:=TRUE;
+                    prCall "DoneInterrupt";
+                    prCall "Up";
+                    prExecute "PutLeft";
+                    bLeftSign:=FALSE;
+                    PulseDO\PLength:=1,ABB_OLeftOK;
+                ELSEIF ABB_IRightOK=1 THEN
+                    prExecute "TakeRight";
+                    bRightSign:=TRUE;
+                    prCall "DoneInterrupt";
+                    prCall "Up";
+                    prExecute "PutRight";
+                    bRightSign:=FALSE;
+                    PulseDO\PLength:=1,ABB_ORightOK;
+                ELSEIF ABB_ILeftNG=1 THEN
+                    prCall "TempHome";
+                    prExecute "PutLeft";
+                    PulseDO\PLength:=1,ABB_OLeftOK;
+                ELSEIF ABB_IRightNG=1 THEN
+                    prCall "TempHome";
+                    prExecute "PutRight";
+                    PulseDO\PLength:=1,ABB_ORightOK;
+                ENDIF
+            ELSE
+                IF bLineSign=TRUE THEN
+                    prCall "Up";
+                    prExecute "PutLine";
+                    WaitUntil ABB_ILinePermit=1;
+                    PulseDO\PLength:=1,ABB_OLineOK;
+                    bLineSign:=FALSE;
+                ELSEIF bLeftSign=TRUE THEN
+                    prCall "Up";
+                    prExecute "PutLeft";
+                    bLeftSign:=FALSE;
+                    PulseDO\PLength:=1,ABB_OLeftOK;
+                ELSEIF bRightSign=TRUE THEN
+                    prCall "Up";
+                    prExecute "PutRight";
+                    bRightSign:=FALSE;
+                    PulseDO\PLength:=1,ABB_ORightOK;
+                ELSE
+                    ErrWrite "ABB Abnormally","please cheak the one manually";
+                    Stop;
+                ENDIF
+            ENDIF
+        ENDIF
+    ENDPROC
+    
+    PROC prSecond()
+        IF ABB_RawNoneSensor=0 THEN
+            IF ABB_DoneNoneSensor=0 THEN
+                IF ABB_ILinePermit=1 THEN
+                    prCall "TempHome";
+                    prExecute "TakeLine";
+                    bLineSign:=TRUE;
+                    prCall "RawInterrupt";
+                ENDIF
+                IF ABB_ILineClear=1 THEN
+                    prCall "Home";
+                    IF bLeftClear=FALSE THEN
+                        IF ABB_ILeftOK=1 THEN
+                            prExecute "TakeLeft";
+                            prCall "DoneInterrupt";
+                            prCall "Up";
+                            WaitUntil ABB_ILineClear=1;
+                            prExecute "PutLine";
+                            Set ABB_OLineOK;
+                            WaitTime 1;
+                            Reset ABB_OLineOK;
+                            bLeftClear:=TRUE;
+                        ELSEIF ABB_ILeftNG=1 THEN
+                            Set ABB_OLineOK;
+                            Set ABB_OLineNG;
+                            WaitTime 1;
+                            Reset ABB_OLineOK;
+                            Reset ABB_OLineNG;
+                            bLeftClear:=TRUE;
+                        ENDIF
+                    ENDIF
+                    IF bRightClear=FALSE THEN
+                        IF ABB_IRightOK=1 THEN
+                            prExecute "TakeRight";
+                            prCall "DoneInterrupt";
+                            prCall "Up";
+                            WaitUntil ABB_ILineClear=1;
+                            prExecute "PutLine";
+                            Set ABB_OLineOK;
+                            WaitTime 1;
+                            Reset ABB_OLineOK;
+                            bRightClear:=TRUE;
+                        ELSEIF ABB_IRightNG=1 THEN
+                            Set ABB_OLineOK;
+                            Set ABB_OLineNG;
+                            WaitTime 1;
+                            Reset ABB_OLineOK;
+                            Reset ABB_OLineNG;
+                            bRightClear:=TRUE;
+                        ENDIF
+                    ENDIF
+                ENDIF
+            ELSE
+                ErrWrite "None","error";
+                Stop;
+            ENDIF
+        ELSE
+            IF ABB_DoneNoneSensor=0 THEN
+                IF ABB_ILeftOK=1 THEN
+                    prCall "Home";
+                    prExecute "TakeLeft";
+                    bLeftSign:=TRUE;
+                    prCall "DoneInterrupt";
+                    prCall "Up";
+                    prExecute "PutLine";
+                    bLineSign:=FALSE;
+                    WaitUntil ABB_ILinePermit=1;
+                    PulseDO\PLength:=1,ABB_OLineOK;
+                    prCall "TempHome";
+                    prExecute "PutLeft";
+                    bLeftSign:=FALSE;
+                    PulseDO\PLength:=1,ABB_OLeftOK;
+                    prCall "TempHome";
+                ELSEIF ABB_IRightOK=1 THEN
+                    prCall "Home";
+                    prExecute "TakeRight";
+                    bRightSign:=TRUE;
+                    prCall "DoneInterrupt";
+                    prCall "Up";
+                    prExecute "PutLine";
+                    bLineSign:=FALSE;
+                    WaitUntil ABB_ILinePermit=1;
+                    PulseDO\PLength:=1,ABB_OLineOK;
+                    prCall "TempHome";
+                    prExecute "PutRight";
+                    bLeftSign:=FALSE;
+                    PulseDO\PLength:=1,ABB_ORightOK;
+                    prCall "TempHome";
+                ELSEIF ABB_ILeftNG=1 THEN
+                    prCall "TempHome";
+                    WaitUntil ABB_ILinePermit=1;
+                    Set ABB_OLineOK;
+                    Set ABB_OLineNG;
+                    WaitTime 1;
+                    Reset ABB_OLineOK;
+                    Reset ABB_OLineNG;
+                    bLeftSign:=FALSE;
+                    prExecute "PutLeft";
+                    PulseDO\PLength:=1,ABB_OLeftOK;
+                    prCall "TempHome";
+                ELSEIF ABB_IRightNG=1 THEN
+                    prCall "TempHome";
+                    WaitUntil ABB_ILinePermit=1;
+                    Set ABB_OLineOK;
+                    Set ABB_OLineNG;
+                    WaitTime 1;
+                    Reset ABB_OLineOK;
+                    Reset ABB_OLineNG;
+                    bRightSign:=FALSE;
+                    prExecute "PutRight";
+                    PulseDO\PLength:=1,ABB_ORightOK;
+                    prCall "TempHome";
+                ENDIF
+            ELSE
+                IF bLeftSign=TRUE THEN
+                    prCall "Up";
+                    prExecute "PutLine";
+                    bLineSign:=FALSE;
+                    WaitUntil ABB_ILinePermit=1;
+                    PulseDO\PLength:=1,ABB_OLineOK;
+                    prCall "Home";
+                    prExecute "PutLeft";
+                    bLeftSign:=FALSE;
+                    PulseDO\PLength:=1,ABB_OLeftOK;
+                ELSEIF bRightSign=TRUE THEN
+                    prCall "Up";
+                    prExecute "PutLine";
+                    bLineSign:=FALSE;
+                    WaitUntil ABB_ILinePermit=1;
+                    PulseDO\PLength:=1,ABB_OLineOK;
+                    prCall "Home";
+                    prExecute "PutRight";
+                    bLeftSign:=FALSE;
+                    PulseDO\PLength:=1,ABB_ORightOK;
+                ELSE
+                    ErrWrite "Sensor Abnormally","check the sensor manually";
+                    Stop;
+                ENDIF
+            ENDIF
+        ENDIF
+    ENDPROC
+    
+    TRAP trInterrupt
+        Set Do03_RotAlarm;
+        ErrWrite "Sensor Abnormally","";
+        Stopmove;
+        Stop;
+        StartMove;
+        Reset Do03_RotAlarm;
+    ENDTRAP
+    
+    PROC prCall(string strTest)
+        VAR robtarget pSafe;
+    
+        TEST strTest
+        CASE "Initial":  
+            IF ABB_DoneNoneSensor=1 THEN
+                prCylinder "DoneRetracted";
+            ELSE
+                prCylinder "DoneExtended";
+            ENDIF
+            IF ABB_RawNoneSensor=1 THEN
+                prCylinder "RawRetracted";
+            ELSE
+                prCylinder "RawExtended";
+            ENDIF
+            IDelete RawInterrupt;
+            IDelete DoneInterrupt;
+            MoveJ pHome,v100,fine,tool0\WObj:=wobj0;
+    
+        CASE "Up":      
+            pSafe:=CRobT(\Tool:=tool0\WObj:=wobj0);
+            MoveL Offs(pSafe,0,0,120),v100,fine,tool0;
+    
+        CASE "Home":    
+            MoveJ pHome,v300,fine,tool0\WObj:=wobj0;
+    
+        CASE "TempHome":      
+            MoveJ pTempHome,v300,fine,tool0\WObj:=wobj0;
+    
+        CASE "RawInterrupt":  
+            IDelete RawInterrupt;
+            CONNECT RawInterrupt WITH trInterrupt;
+            ISignalDI ABB_RawNoneSensor,0,RawInterrupt;
+    
+        CASE "DoneInterrupt":       
+            IDelete DoneInterrupt;
+            CONNECT DoneInterrupt WITH trInterrupt;
+            ISignalDI ABB_DoneNoneSensor,0,DoneInterrupt;
+    
+        DEFAULT:
+            TPWrite "test illegaliy";
+        ENDTEST
+    ENDPROC
+    
+    PROC prExecute(string strTest)
+        TEST strTest
+        CASE "TakeLine":          
+            IF ABB_RawNoneSensor=0 THEN
+                prCylinder "RawExtended";
+                ! go to the line take positions
+                MoveJ Offs(pLineTake,0,0,150),v300,z10,tool0\WObj:=wobj0;
+                MoveL pLineTake,v30,fine,tool0\WObj:=wobj0;
+                prCylinder "RawRetracted";
+                prCall "Up";
+                IF ABB_RawNoneSensor=0 THEN
+                    ErrWrite "Sensor Abnormally","take the raw one abnormally.";
+                    Stop;
+                ENDIF
+            ENDIF
+    
+        CASE "PutLine":              
+            IF ABB_DoneNoneSensor=1 THEN
+                ! go to the line put positions
+                MoveJ Offs(pLinePut,0,0,130),v300,z10,tool0\WObj:=wobj0;
+                MoveL pLinePut,v30,fine,tool0\WObj:=wobj0;
+                IDelete DoneInterrupt;
+                prCylinder "DoneExtended";
+                prCall "Up";
+                IF ABB_DoneNoneSensor=1 THEN
+                    ErrWrite "Sensor Abnormally","please cheak the put done one manually";
+                    Stop;
+                ENDIF
+            ENDIF
+    
+        CASE "TakeLeft":              
+            IF ABB_DoneNoneSensor=0 THEN
+                prCylinder "DoneExtended";
+                ! go to the left take positions
+                MoveJ Offs(pLeftTake,0,0,130),v300,z10,tool0\WObj:=wobj0;
+                MoveL pLeftTake,v30,fine,tool0\WObj:=wobj0;
+                prCylinder "DoneRetracted";
+                prCall "Up";
+                IF ABB_DoneNoneSensor=0 THEN
+                    ErrWrite "Sensor Abnormally","please cheak the take done one manually";
+                    Stop;
+                ENDIF
+            ENDIF
+    
+        CASE "PutLeft":           
+            IF ABB_RawNoneSensor=1 THEN
+                ! go to the left put positions
+                MoveL Offs(pLeftPut,0,0,130),v300,z10,tool0\WObj:=wobj0;
+                MoveL pLeftPut,v30,fine,tool0\WObj:=wobj0;
+                IDelete RawInterrupt;
+                prCylinder "RawExtended";
+                prCall "Up";
+                IF ABB_RawNoneSensor=1 THEN
+                    ErrWrite "Sensor Abnormally","please cheak the put raw one manually";
+                    Stop;
+                ENDIF
+            ENDIF
+    
+        CASE "TakeRight":             
+            IF ABB_DoneNoneSensor=0 THEN
+                prCylinder "DoneExtended";
+                ! go to the right take positions
+                MoveJ Offs(pRightTake,0,0,130),v300,z10,tool0\WObj:=wobj0;
+                MoveL pRightTake,v30,fine,tool0\WObj:=wobj0;
+                prCylinder "DoneRetracted";
+                prCall "Up";
+                IF ABB_DoneNoneSensor=0 THEN
+                    ErrWrite "Sensor Abnormally","please cheak the take done one manually";
+                    Stop;
+                ENDIF
+            ENDIF
+    
+        CASE "PutRight":                  
+            IF ABB_RawNoneSensor=1 THEN
+                ! go to the right put positions
+                MoveJ Offs(pRightPut,0,0,150),v300,z10,tool0\WObj:=wobj0;
+                MoveL pRightPut,v30,fine,tool0\WObj:=wobj0;
+                IDelete RawInterrupt;
+                prCylinder "RawExtended";
+                prCall "Up";
+                IF ABB_RawNoneSensor=1 THEN
+                    ErrWrite "Sensor Abnormally","please cheak the put raw one manually";
+                    Stop;
+                ENDIF
+            ENDIF
+    
+        DEFAULT:
+            ErrWrite "Test Abnormally","case illegaliy";
+            Stop;
+        ENDTEST
+    ENDPROC
+    
+    PROC prCylinder(string strTest)
+        TEST strTest
+        CASE "RawExtended":          
+            Reset ABB_RawRetracted;
+            Set ABB_RawExtended;
+            WaitTime 1;
+            IF ABB_RawExtendedSensor=0 THEN
+                ErrWrite "Cylinder Abnormally","the raw cylinder extended abnormally.";
+                Stop;
+            ENDIF
+    
+        CASE "RawRetracted":         
+            Reset ABB_RawExtended;
+            Set ABB_RawRetracted;
+            WaitTime 1;
+            IF ABB_RawRetractedSensor=0 THEN
+                ErrWrite "Cylinder Abnormally","the raw cylinder retracted abnormally.";
+                Stop;
+            ENDIF
+    
+        CASE "DoneExtended":         
+            Reset ABB_DoneRetracted;
+            Set ABB_DoneExtended;
+            WaitTime 1;
+            IF ABB_DoneExtendedSensor=0 THEN
+                ErrWrite "Cylinder Abnormally","the done cylinder extended abnormally.";
+                Stop;
+            ENDIF
+    
+        CASE "DoneRetracted":       
+            Reset ABB_DoneExtended;
+            Set ABB_DoneRetracted;
+            WaitTime 1;
+            IF ABB_DoneRetractedSensor=0 THEN
+                ErrWrite "Cylinder Abnormally","the done cylinder retracted abnormally.";
+                Stop;
+            ENDIF
+    
+        DEFAULT:
+            ErrWrite "Test Abnormally","case illegaliy";
+            Stop;
+        ENDTEST
+    ENDPROC
+    
+    PROC prSafeZone()
+        VAR shapedata volume;
+        CONST pos corner1:=[450,550,580];
+        CONST pos corner2:=[-7,310,330];
+    
+        WZBoxDef\Inside,volume,corner1,corner2;
+        WZDOSet\Stat, service\Inside, volume, ABB_OSafeSign, 0;        
+    ENDPROC
+    
+    PROC AAA()
+        !!!!! liu shui xian
+        MoveJ Offs(pLineTake,0,0,150),v100,z10,tool0\WObj:=wobj0;
+        MoveL pLineTake,v30,fine,tool0\WObj:=wobj0;
+        MoveL Offs(pLineTake,0,0,150),v50,fine,tool0;
+        MoveJ Offs(pLinePut,0,0,150),v100,z10,tool0\WObj:=wobj0;
+        MoveL pLinePut,v30,fine,tool0\WObj:=wobj0;
+        MoveL Offs(pLinePut,0,0,150),v50,fine,tool0;
+        !!!! chu shi wei zhi 
+        MoveJ pHome,v100,fine,tool0\WObj:=wobj0;
+        MoveJ pTempHome,v300,fine,tool0\WObj:=wobj0;
+        !!!!! zuo ce dian jiao
+        MoveJ Offs(pLeftTake,0,0,150),v100,z10,tool0\WObj:=wobj0;
+        MoveL pLeftTake,v30,fine,tool0\WObj:=wobj0;
+        MoveL Offs(pLeftTake,0,0,150),v50,fine,tool0;
+        MoveJ Offs(pLeftPut,0,0,150),v100,z10,tool0\WObj:=wobj0;
+        MoveL pLeftPut,v30,fine,tool0\WObj:=wobj0;
+        MoveL Offs(pLeftPut,0,0,150),v50,fine,tool0;
+        !!!you ce dian jiao
+        MoveJ Offs(pRightTake,0,0,150),v100,z10,tool0\WObj:=wobj0;
+        MoveL pRightTake,v30,fine,tool0\WObj:=wobj0;
+        MoveL Offs(pRightTake,0,0,150),v50,fine,tool0;
+        MoveJ Offs(pRightPut,0,0,150),v100,z10,tool0\WObj:=wobj0;
+        MoveL pRightPut,v30,fine,tool0\WObj:=wobj0;
+        MoveL Offs(pRightPut,0,0,150),v50,fine,tool0;
+    ENDPROC
+
+ENDMODULE
